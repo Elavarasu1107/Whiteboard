@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.decorators import action
-
+from utils.exceptions import exception_handler
 from .serializers import RegisterSerializer, LoginSerializer
 from rest_framework.response import Response
 from rest_framework import status
@@ -10,8 +10,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 # Create your views here.
-
 class UserRest(viewsets.ViewSet):
+    @exception_handler
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def create(self, request):
         serializer = RegisterSerializer(data=request.data)

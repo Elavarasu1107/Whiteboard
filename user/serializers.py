@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-
+from utils.exceptions import ApiException
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,5 +20,5 @@ class LoginSerializer(serializers.Serializer):
     def create(self, validated_data):
         user = authenticate(**validated_data)
         if not user:
-            raise Exception('Invalid credentials')
+            raise ApiException(message='Invalid credentials', status=401)
         return user
