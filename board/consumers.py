@@ -1,7 +1,7 @@
 import json
 
 from asgiref.sync import async_to_sync
-from channels.generic.websocket import AsyncWebsocketConsumer, AsyncJsonWebsocketConsumer
+from channels.generic.websocket import AsyncWebsocketConsumer
 
 
 class Consumer(AsyncWebsocketConsumer):
@@ -35,13 +35,3 @@ class Consumer(AsyncWebsocketConsumer):
                                               'user': event['user']
                                               }))
 
-
-# class Consumer(AsyncJsonWebsocketConsumer):
-#     async def connect(self):
-#         self.board_id = self.scope["url_route"]["kwargs"]["board_id"]
-#         self.board_group_name = f"board_{self.board_id}"
-#         await self.channel_layer.group_add(self.board_group_name, self.channel_name)
-#         await self.accept()
-#
-#     async def disconnect(self, close_code):
-#         await self.channel_layer.group_discard(self.board_group_name, self.channel_name)

@@ -9,3 +9,4 @@ class Board(models.Model):
     coordinates = models.CharField(max_length=255, null=True, blank=True)
     actions = models.CharField(max_length=255, null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    collaborators = models.ManyToManyField(User, related_name='collaborators')

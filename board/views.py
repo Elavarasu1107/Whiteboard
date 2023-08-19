@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.views.generic import TemplateView
-
+from django.db.models import Q
 from user.utils import SessionAuth
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -20,7 +20,7 @@ class BoardRest(ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        return qs.filter(user_id=self.request.user.id)
+        return qs.filter(Q(user_id=self.request.user.id) | Q(collaborators__id=self.request.user.id))
 
     @exception_handler
     def dispatch(self, request, *args, **kwargs):
