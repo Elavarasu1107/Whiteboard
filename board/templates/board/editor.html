@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        section {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+
+        .drawing-board {
+            padding-top: 2px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+        }
+
+        #toolbar {
+            display: flex;
+            flex-direction: column;
+            padding: 5px;
+            width: 20%;
+            background-color: aliceblue;
+        }
+
+        #toolbar label {
+            font-size: 20px;
+        }
+
+        #toolbar input {
+            width: 50%;
+        }
+
+        #toolbar button {
+            background-color: #1565c0;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            padding: 2px;
+        }
+
+        .stroke-color,
+        .line-width,
+        .buttons {
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+
+<body>
+    <section>
+        <div id="toolbar">
+            <div class="sidebar">
+                <h3 class="text-2xl" id="logged-user">{{ user.username }}</h3>
+                <div class="stroke-color">
+                    <label for="stroke">Stroke</label>
+                    <input id="stroke" name="stroke" type="color">
+                </div>
+                <div class="line-width">
+                    <label for="linewidth">Line Width</label>
+                    <input id="linewidth" name="linewidth" value=5 type="number">
+                </div>
+                <div class="buttons">
+                    <button id="clear">Clear</button>
+                    <button id="save">Save</button>
+                </div>
+            </div>
+        </div>
+        <div class="drawing-board">
+            <canvas id="drawing-board"></canvas>
+        </div>
+    </section>
+    <script>
+        const path = window.location.pathname.split('/').slice(-1)[0]
+        const socket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws/board/'
+            + path
+            + '/'
+        );
+
+        const loggedUser = document.getElementById('logged-user').innerText
+
+
+        const canvas = document.getElementById('drawing-board');
+        const toolbar = document.getElementById('toolbar');
+        const ctx = canvas.getContext('2d');
+        const canvasOffsetX = canvas.offsetLeft;
+        const canvasOffsetY = canvas.offsetTop;
+
+        canvas.width = window.innerWidth - canvasOffsetX;
+        canvas.height = window.innerHeight - canvasOffsetY;
+
+        let isPaint = false;
+        let lineWidth = 5;
+        let startX;
+        let startY;
+
+        toolbar.addEventListener('click', (e) => {
+            if (e.target.id === 'clear') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+            }
+        })
+
+        toolbar.addEventListener('change', (e) => {
+            if (e.target.id === 'stroke') {
+                ctx.strokeStyle = e.target.value
+            }
+        })
+
+        toolbar.addEventListener('input', (e) => {
+            if (e.target.id === 'linewidth') {
+                lineWidth = e.target.value
+            }
+        })
+
+        canvas.addEventListener('mousedown', (e) => {
+            isPaint = true;
+            startX = e.clientX
+            startY = e.clientY
+        })
+
+        canvas.addEventListener('mouseup', (e) => {
+            isPaint = false;
+            // ctx.stroke();
+            ctx.beginPath();
+        })
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isPaint) {
+                return;
+            }
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            let x = e.clientX - canvasOffsetX
+            let y = e.clientY - canvasOffsetY
+            ctx.lineTo(x, y)
+            ctx.stroke();
+            socket.send(JSON.stringify({
+                'coordinates': `${x},${y}`,
+                'lineWidth': lineWidth,
+                'color': ctx.strokeStyle,
+                'user': loggedUser
+            }))
+        })
+
+        socket.onmessage = (e) => {
+            const data = JSON.parse(e.data)
+            // console.log(data);
+            if (loggedUser === e.user) {
+                return;
+            }
+            ctx.lineWidth = data.lineWidth;
+            ctx.lineCap = 'round';
+            let coordinates = data.coordinates.split(',')
+            ctx.lineTo(coordinates[0], coordinates[1])
+            ctx.stroke();
+        }
+    </script>
+</body>
+
+</html>

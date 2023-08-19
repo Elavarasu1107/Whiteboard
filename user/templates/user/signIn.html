@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+</head>
+
+<body>
+    <div>
+        <div class="login_details">
+            <label class="label" for="username">Username</label>
+            <input class="input" type="text" id="username" name="username" placeholder="Enter Username" required>
+        </div>
+        <div class="login_details">
+            <label class="label" for="password">Password</label>
+            <input class="input" type="password" id="password" name="password" placeholder="Enter Password" required>
+        </div>
+        <div class="buttons">
+            <button class="button" id="signUp">SignUp</button>
+            <button class="button" id="signIn" type="submit">Login</button>
+        </div>
+    </div>
+    <script>
+        const signUp = document.getElementById('signUp')
+        const signIn = document.getElementById('signIn')
+        const originUrl = window.location.origin
+        signUp.onclick = () => {
+            window.location.href = `${originUrl}/signUp/`
+        }
+        signIn.onclick = loginAPI
+        async function loginAPI () {
+            let data = {
+                'username': document.getElementById('username').value,
+                'password': document.getElementById('password').value
+            }
+            await fetch(`${originUrl}/api/user/signIn/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            }).then(response => {
+                return response.json()
+            }).then(data => {
+                if (data.status === 200) {
+                    window.location.href = `${originUrl}/boards/`
+                } else {
+                    alert('Invalid Credentials')
+                }
+            }).catch(ex => {
+                console.error(ex);
+            })
+        }
+    </script>
+</body>
+
+</html>

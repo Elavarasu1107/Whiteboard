@@ -16,9 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import TemplateView
+from django.contrib.auth.decorators import login_required
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/user/', include('user.urls')),
-    path('api/board/', include('board.urls'))
+    path('api/board/', include('board.urls')),
+    path('signUp/', TemplateView.as_view(template_name='user/signUp.html')),
+    path('', TemplateView.as_view(template_name='user/signIn.html')),
+    path('boards/', login_required(TemplateView.as_view(template_name='board/boards.html'))),
+    path('editor/<int:board_id>', login_required(TemplateView.as_view(template_name='board/editor.html'))),
 ]

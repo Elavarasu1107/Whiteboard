@@ -1,4 +1,6 @@
 from django.shortcuts import render
+from django.views.generic import TemplateView
+
 from user.utils import SessionAuth
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -35,6 +37,6 @@ class BoardRest(ModelViewSet):
         response = super().list(request, *args, **kwargs)
         return Response({'message': 'Boards Retrieved', 'status': 200, 'data': response.data})
 
-    def retrieve(self, request,  *args, **kwargs):
+    def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
         return Response({'message': 'Board Retrieved', 'status': 200, 'data': response.data})
