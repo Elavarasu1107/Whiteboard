@@ -44,6 +44,9 @@
                 return response.json()
             }).then(data => {
                 if (data.status === 200) {
+                    const date = new Date()
+                    date.setTime(date.getTime() + (60 * 60 * 1000))
+                    document.cookie = `auth_token=${data.data.access};expires=${date.toUTCString()};path=/`
                     window.location.href = `${originUrl}/boards/`
                 } else {
                     alert('Invalid Credentials')

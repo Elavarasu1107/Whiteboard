@@ -19,7 +19,11 @@ class ApiException(Exception):
 def exception_handler(function):
     def wrapper(request, *args, **kwargs):
         try:
-            return function(request, *args, **kwargs)
+            response = function(request, *args, **kwargs)
+            # print(dir(response))
+            # print(response.content)
+            # print(response.data)
+            return response
         except ApiException as ex:
             response = Response({'message': str(ex.message), 'status': ex.status}, status=ex.status)
         except Exception as ex:
