@@ -1,12 +1,12 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-
+from utils.exceptions import ApiException
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'password', 'first_name', 'last_name', 'email']
+        fields = ['id', 'username', 'password', 'first_name', 'last_name', 'email']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -20,5 +20,5 @@ class LoginSerializer(serializers.Serializer):
     def create(self, validated_data):
         user = authenticate(**validated_data)
         if not user:
-            raise Exception('Invalid credentials')
+            raise ApiException(message='Invalid credentials', status=401)
         return user

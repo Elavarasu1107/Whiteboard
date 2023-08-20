@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Boards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+    </style>
+</head>
+
+<body>
+    <section class="px-4 container mx-auto relative overflow-auto h-full">
+        <div class="header flex justify-between border-2 items-center bg-slate-300 font-sans font-bold"
+            style="height: 10vh;">
+            <h2 class="text-2xl">White Boards</h2>
+            <h3 class="text-2xl" id="logged-user">{{ user.username }}</h3>
+            <button id="new-board" class="bg-blue-500 hover:bg-blue-700 text-white font-bold h-10 w-10">
+                New
+            </button>
+        </div>
+        <div id="board-div" class="grid grid-cols-3 gap-4" style="height: 90vh;">
+        </div>
+    </section>
+    <script>
+        const originUrl = window.location.origin
+        const boardSection = document.getElementById('board-div')
+
+        function getToken () {
+            const cookieArray = document.cookie.split(';')
+            const token_list = cookieArray.filter(x => x.includes('auth_token'))
+            return token_list[0] !== undefined ? `Bearer ${token_list[0].split('=')[1]}` : null
+        }
+
+        function getHeader () {
+            const token = getToken()
+            if (token != null) {
+                return { Authorization: token, 'Content-Type': 'application/json' }
+            } else {
+                // window.location.replace(URLManager.logout)
+                window.location.replace(`${originUrl}?next=${window.location.pathname}`)
+            }
+        }
+
+        let boards;
+        window.onload = async () => {
+            await fetch(`${originUrl}/api/board/`, {
+                method: 'GET',
+                headers: getHeader(),
+            }).then(response => {
+                return response.json()
+            }).then(data => {
+                for (let board of data.data) {
+                    const div = document.createElement('div')
+                    div.classList.add('boards', 'border-2', 'flex', 'justify-center', 'items-center', 'h-40', 'cursor-pointer')
+                    div.setAttribute('id', board.id)
+                    div.innerHTML = board.name
+                    boardSection.appendChild(div)
+                }
+            }).catch(ex => {
+                console.error(ex);
+            })
+        }
+
+        setTimeout(() => {
+            boards = boards = document.querySelectorAll('.boards')
+            var socket;
+            Array.from(boards).forEach(element => {
+                element.addEventListener('click', (e) => {
+                    window.location.href = `${originUrl}/editor/${e.target.id}`
+                })
+            });
+        }, 500)
+
+        const newBoard = document.getElementById('new-board')
+        newBoard.addEventListener('click', (e) => {
+            window.location.replace(`${originUrl}/editor/`)
+        })
+
+    </script>
+</body>
+
+</html>

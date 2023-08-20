@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        section {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+
+        .drawing-board {
+            padding-top: 2px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+        }
+
+        #toolbar {
+            display: flex;
+            flex-direction: column;
+            padding: 5px;
+            width: 20%;
+            background-color: aliceblue;
+        }
+
+        #toolbar label {
+            font-size: 20px;
+        }
+
+        #toolbar input {
+            width: 50%;
+        }
+
+        #toolbar button {
+            background-color: #1565c0;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            padding: 2px;
+        }
+
+        .stroke-color,
+        .line-width,
+        .buttons,
+        .board-name {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #user-list input {
+            width: 5%;
+        }
+    </style>
+</head>
+
+<body>
+    <section>
+        <div id="toolbar">
+            <div class="sidebar gap-7">
+                <h3 class="text-2xl bg-emerald-100 justify-center flex" id="logged-user">Hi, {{ user.username }}</h3>
+                <div class="board-name">
+                    <label for="board-name">Name</label>
+                    <input id="board-name" name="board-name" type="text" value="">
+                </div>
+                <div class="stroke-color">
+                    <label for="stroke">Stroke</label>
+                    <input id="stroke" name="stroke" type="color">
+                </div>
+                <div class="line-width">
+                    <label for="linewidth">Line Width</label>
+                    <input id="linewidth" name="linewidth" value=5 type="number">
+                </div>
+                <div class="buttons">
+                    <button id="clear">Clear</button>
+                    <button id="save">Save</button>
+                    <button id="share" disabled>Share</button>
+                </div>
+                <div class="user-list flex flex-col gap-2 max-h-40 overflow-auto" id="user-list"> Share
+                    <label class="users" for="user"></label>
+                </div>
+            </div>
+        </div>
+        <div class="drawing-board">
+            <canvas id="drawing-board"></canvas>
+        </div>
+    </section>
+    {{ collaborators|json_script:"collaborators" }}
+    <script>
+        const collaborators = JSON.parse(document.getElementById('collaborators').innerHTML)
+        const originUrl = window.location.origin
+        const loggedUser = document.getElementById('logged-user').innerText.split(',')[1].trim()
+
+        function getToken () {
+            const cookieArray = document.cookie.split(';')
+            const token_list = cookieArray.filter(x => x.includes('auth_token'))
+            return token_list[0] !== undefined ? `Bearer ${token_list[0].split('=')[1]}` : null
+        }
+
+        function getHeader () {
+            const token = getToken()
+            if (token != null) {
+                return { Authorization: token, 'Content-Type': 'application/json' }
+            } else {
+                window.location.replace(originUrl)
+            }
+        }
+        getHeader();
+
+        async function restAPI ({ endpoint = null, method = 'GET', body = null, action = null }) {
+            if (body !== null) body = JSON.stringify(body)
+            await fetch((originUrl + endpoint), {
+                method: method,
+                headers: getHeader(),
+                body: body
+            }).then(res => {
+                return res.json()
+            }).then(data => {
+                if (data.status === undefined || data.status >= 400) {
+                    throw JSON.stringify(data)
+                }
+                action(data)
+            }).catch(ex => {
+                alert(ex)
+            })
+        }
+
+        function populateUsers (data) {
+            const userListDiv = document.getElementById('user-list')
+            if (data.status === 200) {
+                data.data.map(obj => {
+                    if (obj.username !== loggedUser) {
+                        const div = document.createElement('div')
+                        const input = document.createElement('input')
+                        const span = document.createElement('span')
+                        span.innerHTML = obj.username
+                        div.classList.add('flex', 'gap-5', 'items-center', 'content-center')
+                        input.classList.add('user')
+                        input.setAttribute('type', 'checkbox')
+                        input.setAttribute('name', 'user')
+                        input.setAttribute('id', obj.id)
+                        input.setAttribute('value', obj.id)
+                        if (collaborators.includes(obj.id)) {
+                            input.checked = true
+                        }
+                        div.appendChild(input)
+                        div.appendChild(span)
+                        userListDiv.appendChild(div)
+                    }
+                })
+
+
+                const user = document.getElementsByClassName('user')
+                Array.from(user).forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        if (el.checked) {
+                            collaboratorAddList.push(el.id)
+                        } else {
+                            if (collaboratorAddList.includes(el.id)) {
+                                collaboratorAddList.pop(el.id)
+                            }
+                        }
+
+                    })
+                })
+            }
+        }
+
+        // function populateBoard (data) {
+        //     document.getElementById('board-name').value = data.data[0].name
+        //     for (let co of data.data[1]) {
+        //         console.log(co);
+        //     }
+        // }
+
+        function alertBox (data) {
+            alert(data.message)
+        }
+
+        function reDirectPage (data) {
+            window.location.replace(`${originUrl}/boards/`)
+        }
+
+        const collaboratorAddList = []
+
+
+        var newBaordData = []
+        const saveBtn = document.getElementById('save')
+        // saveBtn.classList.add('visible')
+        saveBtn.addEventListener('click', (e) => {
+            restAPI({
+                endpoint: '/api/board/',
+                method: 'POST',
+                body: {
+                    'name': document.getElementById('board-name').value,
+                    'actions': 'Draw',
+                    'extra_data': newBaordData.toString()
+                },
+                action: reDirectPage
+            })
+        })
+
+        window.onload = async (e) => {
+            restAPI({ endpoint: '/api/user/signUp', method: 'GET', body: null, action: populateUsers })
+            if (path !== '') {
+                restAPI({ endpoint: `/api/board/${parseInt(path)}`, method: 'GET', body: null, action: populateBoard })
+            }
+        }
+
+
+        const path = window.location.pathname.split('/').slice(-1)[0]
+
+        const shareBtn = document.getElementById('share')
+        shareBtn.classList.toggle('invisible')
+        shareBtn.addEventListener('click', async (e) => {
+            if (path !== '') {
+                restAPI({
+                    endpoint: '/api/board/share/', method: 'POST', body: {
+                        'id': parseInt(path),
+                        'collaborators': collaboratorAddList,
+                    }, action: alertBox
+                })
+            }
+        })
+
+
+        if (path !== '') {
+            shareBtn.disabled = false
+            shareBtn.classList.toggle('invisible')
+            saveBtn.classList.add('invisible')
+            var socket = new WebSocket(
+                'ws://'
+                + window.location.host
+                + '/ws/board/'
+                + path
+                + '/'
+            );
+        }
+
+
+        const canvas = document.getElementById('drawing-board');
+        const toolbar = document.getElementById('toolbar');
+        const ctx = canvas.getContext('2d');
+        const canvasOffsetX = canvas.offsetLeft;
+        const canvasOffsetY = canvas.offsetTop;
+
+        canvas.width = window.innerWidth - canvasOffsetX;
+        canvas.height = window.innerHeight - canvasOffsetY;
+
+        let isPaint = false;
+        let lineWidth = 5;
+        let startX;
+        let startY;
+
+        toolbar.addEventListener('click', (e) => {
+            if (e.target.id === 'clear') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height)
+            }
+        })
+
+        toolbar.addEventListener('change', (e) => {
+            if (e.target.id === 'stroke') {
+                ctx.strokeStyle = e.target.value
+            }
+        })
+
+        toolbar.addEventListener('input', (e) => {
+            if (e.target.id === 'linewidth') {
+                lineWidth = e.target.value
+            }
+        })
+
+        canvas.addEventListener('mousedown', async (e) => {
+            isPaint = true;
+            await ctx.beginPath()
+            startX = e.clientX
+            startY = e.clientY
+        })
+
+        const coordinateArr = []
+
+        canvas.addEventListener('mouseup', async (e) => {
+            isPaint = false;
+
+
+
+            // await ctx.closePath();
+            if (path !== '') {
+                let currentData = {
+                    'coordinates': coordinateArr.toString(),
+                    'lineWidth': lineWidth,
+                    'color': ctx.strokeStyle,
+                    'user': loggedUser,
+                    'user_id': '{{ user.id }}',
+                    'board_id': path,
+                }
+                await socket.send(JSON.stringify(currentData))
+                newBaordData.push(JSON.stringify(currentData))
+            }
+
+        })
+
+        canvas.addEventListener('mousemove', async (e) => {
+            if (!isPaint) {
+                return;
+            }
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            let x = e.clientX - canvasOffsetX
+            let y = e.clientY - canvasOffsetY
+            await ctx.lineTo(x, y)
+            await ctx.stroke();
+            coordinateArr.push(`${x}-${y}`)
+            // if (path !== '') {
+            //     await socket.send(JSON.stringify({
+            //         'coordinates': `${x}-${y}`,
+            //         'lineWidth': lineWidth,
+            //         'color': ctx.strokeStyle,
+            //         'user': loggedUser
+            //     }))
+            // }
+        })
+
+        if (path !== '') {
+            socket.onmessage = async (e) => {
+                const data = JSON.parse(e.data)
+                if (loggedUser === data.user) {
+                    return;
+                }
+                coordinates = data.coordinates.split(',')
+                for (let co of coordinates) {
+                    let pos = co.split('-')
+                    setTimeout(async () => {
+                        ctx.beginPath();
+                        ctx.lineWidth = data.lineWidth;
+                        ctx.lineCap = 'round';
+                        ctx.strokeStyle = data.color
+                        ctx.lineTo(pos[0], pos[1])
+                        ctx.stroke();
+                    }, 500)
+                }
+                // let pos = data.coordinates.split('-')
+                // await ctx.beginPath();
+                // setTimeout(async () => {
+                //     ctx.lineWidth = data.lineWidth;
+                //     ctx.lineCap = 'round';
+                //     ctx.strokeStyle = data.color
+                //     await ctx.lineTo(pos[0], pos[1])
+                //     await ctx.stroke();
+                // }, 1000)
+            }
+        }
+
+        function populateBoard (data) {
+            document.getElementById('board-name').value = data.data[0].name
+            for (let co of data.data[1]) {
+                ctx.beginPath()
+                ctx.lineWidth = co.line_width;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = co.color
+                for (let i of co.coordinates.split(',')) {
+                    ctx.beginPath()
+                    let pos = i.split('-')
+                    ctx.lineTo(pos[0], pos[1])
+                    ctx.stroke();
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
