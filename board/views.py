@@ -1,3 +1,4 @@
+from django.forms import model_to_dict
 from django.shortcuts import render, redirect
 from django.views.generic import View
 from django.db.models import Q
@@ -39,8 +40,27 @@ class BoardRest(ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         response = super().retrieve(request, *args, **kwargs)
-        board_details = BoardDetails.objects.filter(board_id=response.data['id'], user_id=response.data['user']).values()
+        board_details = BoardDetails.objects.filter(board_id=response.data['id'],
+                                                    user_id=response.data['user'],
+                                                    current_pointer__in=['current', 'enabled']).values()
         return Response({'message': 'Board Retrieved', 'status': 200, 'data': [response.data, board_details]})
+
+    def update(self, request, *args, **kwargs):
+        board = Board.objects.filter(id=kwargs.get('pk')).first()
+        if not board:
+            raise ApiException(message='Board not found', status=404)
+        boards = board.boarddetails_set.filter(current_pointer='current')
+        current_board = boards.first()
+        if not current_board:
+            raise ApiException(message='No data to undo or redo', status=400)
+        current_board.current_pointer = 'disabled'
+        current_board.save()
+        new_pointer = board.boarddetails_set.filter(current_pointer='enabled').last()
+        if new_pointer:
+            new_pointer.current_pointer = 'current'
+            new_pointer.save()
+        response = self.retrieve(request, *args, **kwargs)
+        return response
 
 
 class CollaboratorRest(ModelViewSet):
@@ -58,15 +78,15 @@ class CollaboratorRest(ModelViewSet):
             raise ApiException(message='Board not found or access denied', status=406)
         board.collaborators.add(*request.data.get('collaborators'))
         board.save()
-        return Response({'message': 'Board shared successfully', 'status': 200}, status=200)
+        return Response({'message': 'success', 'status': 200}, status=200)
 
     def destroy(self, request, *args, **kwargs):
-        board = Board.objects.get(id=request.data.get('id'), user_id=request.user.id).first()
+        board = Board.objects.filter(id=request.data.get('id'), user_id=request.user.id).first()
         if not board:
             raise ApiException(message='Board not found', status=404)
         board.collaborators.remove(*request.data.get('collaborators'))
         board.save()
-        return Response({'message': 'Board removed', 'status': 200}, status=200)
+        return Response({'message': 'success', 'status': 200}, status=200)
 
 
 class EditorView(View):

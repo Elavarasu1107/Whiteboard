@@ -31,8 +31,16 @@ class Consumer(AsyncWebsocketConsumer):
     def save_canvas(self, data):
         board = Board.objects.filter(id=int(data['board_id'])).first()
         if board:
+            current_board = board.boarddetails_set.filter(user_id=board.user.id,
+                                                          board_id=board.id,
+                                                          current_pointer='current').first()
+            if current_board:
+                current_board.current_pointer = 'enabled'
+                current_board.save()
+
             board.boarddetails_set.create(user_id=board.user.id,
                                           coordinates=data['coordinates'],
                                           line_width=data['lineWidth'],
                                           color=data['color'],
-                                          board_id=board.id)
+                                          board_id=board.id,
+                                          current_pointer='current')

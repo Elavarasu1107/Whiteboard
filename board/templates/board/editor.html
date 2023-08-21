@@ -69,6 +69,12 @@
             justify-content: space-between;
         }
 
+        .undo {
+            display: flex;
+            justify-content: flex-end;
+            gap: 5px;
+        }
+
         #user-list input {
             width: 5%;
         }
@@ -97,6 +103,10 @@
                     <button id="save">Save</button>
                     <button id="share" disabled>Share</button>
                 </div>
+                <div class="undo">
+                    <button id="undo">Undo</button>
+                    <!-- <button id="redo">Redo</button> -->
+                </div>
                 <div class="user-list flex flex-col gap-2 max-h-40 overflow-auto" id="user-list"> Share
                     <label class="users" for="user"></label>
                 </div>
@@ -112,6 +122,23 @@
         const originUrl = window.location.origin
         const loggedUser = document.getElementById('logged-user').innerText.split(',')[1].trim()
 
+
+        const canvas = document.getElementById('drawing-board');
+        const toolbar = document.getElementById('toolbar');
+        const ctx = canvas.getContext('2d');
+        const canvasOffsetX = canvas.offsetLeft;
+        const canvasOffsetY = canvas.offsetTop;
+
+        canvas.width = window.innerWidth - canvasOffsetX;
+        canvas.height = window.innerHeight - canvasOffsetY;
+
+        let isPaint = false;
+        let lineWidth = 5;
+        let startX;
+        let startY;
+
+
+        // Authentication
         function getToken () {
             const cookieArray = document.cookie.split(';')
             const token_list = cookieArray.filter(x => x.includes('auth_token'))
@@ -128,6 +155,8 @@
         }
         getHeader();
 
+
+        // Calling REST api's in backend
         async function restAPI ({ endpoint = null, method = 'GET', body = null, action = null }) {
             if (body !== null) body = JSON.stringify(body)
             await fetch((originUrl + endpoint), {
@@ -140,11 +169,15 @@
                 if (data.status === undefined || data.status >= 400) {
                     throw JSON.stringify(data)
                 }
-                action(data)
+                if (action !== null) action(data)
             }).catch(ex => {
                 alert(ex)
             })
         }
+
+        const collaboratorAddList = []
+        const collaboratorDeleteList = []
+
 
         function populateUsers (data) {
             const userListDiv = document.getElementById('user-list')
@@ -176,7 +209,11 @@
                     el.addEventListener('click', (e) => {
                         if (el.checked) {
                             collaboratorAddList.push(el.id)
+                            if (collaboratorDeleteList.includes(el.id)) {
+                                collaboratorDeleteList.pop(el.id)
+                            }
                         } else {
+                            collaboratorDeleteList.push(el.id)
                             if (collaboratorAddList.includes(el.id)) {
                                 collaboratorAddList.pop(el.id)
                             }
@@ -187,12 +224,21 @@
             }
         }
 
-        // function populateBoard (data) {
-        //     document.getElementById('board-name').value = data.data[0].name
-        //     for (let co of data.data[1]) {
-        //         console.log(co);
-        //     }
-        // }
+        function populateBoard (data) {
+            document.getElementById('board-name').value = data.data[0].name
+            for (let co of data.data[1]) {
+                ctx.beginPath()
+                ctx.lineWidth = co.line_width;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = co.color
+                for (let i of co.coordinates.split(',')) {
+                    ctx.beginPath()
+                    let pos = i.split('-')
+                    ctx.lineTo(pos[0], pos[1])
+                    ctx.stroke();
+                }
+            }
+        }
 
         function alertBox (data) {
             alert(data.message)
@@ -202,12 +248,8 @@
             window.location.replace(`${originUrl}/boards/`)
         }
 
-        const collaboratorAddList = []
-
-
         var newBaordData = []
         const saveBtn = document.getElementById('save')
-        // saveBtn.classList.add('visible')
         saveBtn.addEventListener('click', (e) => {
             restAPI({
                 endpoint: '/api/board/',
@@ -236,6 +278,12 @@
         shareBtn.addEventListener('click', async (e) => {
             if (path !== '') {
                 restAPI({
+                    endpoint: '/api/board/share/', method: 'DELETE', body: {
+                        'id': parseInt(path),
+                        'collaborators': collaboratorDeleteList,
+                    }
+                })
+                restAPI({
                     endpoint: '/api/board/share/', method: 'POST', body: {
                         'id': parseInt(path),
                         'collaborators': collaboratorAddList,
@@ -243,6 +291,21 @@
                 })
             }
         })
+
+
+        const undo = document.getElementById('undo')
+        // const redo = document.getElementById('redo')
+
+        undo.addEventListener('click', (e) => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height)
+            restAPI({
+                endpoint: `/api/board/${parseInt(path)}`, method: 'PUT', action: populateBoard
+            })
+        })
+
+        // redo.addEventListener('click', (e) => {
+        //     console.log('redo');
+        // })
 
 
         if (path !== '') {
@@ -258,20 +321,6 @@
             );
         }
 
-
-        const canvas = document.getElementById('drawing-board');
-        const toolbar = document.getElementById('toolbar');
-        const ctx = canvas.getContext('2d');
-        const canvasOffsetX = canvas.offsetLeft;
-        const canvasOffsetY = canvas.offsetTop;
-
-        canvas.width = window.innerWidth - canvasOffsetX;
-        canvas.height = window.innerHeight - canvasOffsetY;
-
-        let isPaint = false;
-        let lineWidth = 5;
-        let startX;
-        let startY;
 
         toolbar.addEventListener('click', (e) => {
             if (e.target.id === 'clear') {
@@ -372,21 +421,6 @@
             }
         }
 
-        function populateBoard (data) {
-            document.getElementById('board-name').value = data.data[0].name
-            for (let co of data.data[1]) {
-                ctx.beginPath()
-                ctx.lineWidth = co.line_width;
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = co.color
-                for (let i of co.coordinates.split(',')) {
-                    ctx.beginPath()
-                    let pos = i.split('-')
-                    ctx.lineTo(pos[0], pos[1])
-                    ctx.stroke();
-                }
-            }
-        }
     </script>
 </body>
 

@@ -10,12 +10,11 @@ class BoardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Board
-        fields = ['id', 'name', 'actions', 'user', 'collaborators', 'extra_data']
+        fields = ['id', 'name', 'user', 'collaborators', 'extra_data']
         read_only_fields = ['collaborators']
 
     def create(self, validated_data):
         board = Board.objects.create(name=validated_data['name'],
-                                     actions=validated_data['actions'],
                                      user=validated_data['user'])
         if validated_data['extra_data'] != '':
             extra_data = json.loads(validated_data['extra_data'])
