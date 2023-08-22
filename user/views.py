@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import login, logout
 from rest_framework_simplejwt.tokens import RefreshToken
+from board.models import Board
 
 
 # Create your views here.
@@ -25,7 +26,8 @@ class UserRest(viewsets.ViewSet):
                         status=status.HTTP_201_CREATED)
 
     def list(self, request):
-        users = User.objects.all()
+        board = Board.objects.get(id=request.query_params.get('id'))
+        users = User.objects.all().exclude(id=board.user.id)
         serializer = RegisterSerializer(users, many=True)
         return Response({'message': 'Users retrieved', 'status': 200, 'data': serializer.data},
                         status=status.HTTP_200_OK)

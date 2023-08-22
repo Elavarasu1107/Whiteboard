@@ -83,7 +83,7 @@ class CollaboratorRest(ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         board = Board.objects.filter(id=request.data.get('id'), user_id=request.user.id).first()
         if not board:
-            raise ApiException(message='Board not found', status=404)
+            raise ApiException(message='Board not found or access denied', status=404)
         board.collaborators.remove(*request.data.get('collaborators'))
         board.save()
         return Response({'message': 'success', 'status': 200}, status=200)

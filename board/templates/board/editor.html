@@ -153,7 +153,7 @@
                 window.location.replace(originUrl)
             }
         }
-        getHeader();
+        document.addEventListener('click', getHeader)
 
 
         // Calling REST api's in backend
@@ -171,7 +171,7 @@
                 }
                 if (action !== null) action(data)
             }).catch(ex => {
-                alert(ex)
+                console.error(ex)
             })
         }
 
@@ -264,8 +264,9 @@
         })
 
         window.onload = async (e) => {
-            restAPI({ endpoint: '/api/user/signUp', method: 'GET', body: null, action: populateUsers })
             if (path !== '') {
+                restAPI({ endpoint: `/api/user/signUp?id=${parseInt(path)}`, method: 'GET', body: null, action: populateUsers })
+
                 restAPI({ endpoint: `/api/board/${parseInt(path)}`, method: 'GET', body: null, action: populateBoard })
             }
         }
@@ -394,11 +395,14 @@
                     ctx.lineWidth = data.lineWidth;
                     ctx.lineCap = 'round';
                     ctx.strokeStyle = data.color
-                    prev = pos
                     ctx.lineTo(pos[0], pos[1])
                     ctx.stroke();
                 }
                 ctx.closePath();
+            }
+
+            socket.onclose = (e) => {
+                window.location.reload()
             }
         }
 
