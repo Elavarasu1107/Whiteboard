@@ -96,7 +96,7 @@
                 </div>
                 <div class="line-width">
                     <label for="linewidth">Line Width</label>
-                    <input id="linewidth" name="linewidth" value=5 type="number">
+                    <input id="linewidth" name="linewidth" value=2 type="number">
                 </div>
                 <div class="buttons">
                     <button id="clear">Clear</button>
@@ -133,7 +133,7 @@
         canvas.height = window.innerHeight - canvasOffsetY;
 
         let isPaint = false;
-        let lineWidth = 5;
+        let lineWidth = 2;
         let startX;
         let startY;
 
@@ -232,11 +232,11 @@
                 ctx.lineCap = 'round';
                 ctx.strokeStyle = co.color
                 for (let i of co.coordinates.split(',')) {
-                    ctx.beginPath()
                     let pos = i.split('-')
                     ctx.lineTo(pos[0], pos[1])
                     ctx.stroke();
                 }
+                ctx.closePath()
             }
         }
 
@@ -340,21 +340,19 @@
             }
         })
 
-        canvas.addEventListener('mousedown', async (e) => {
+        canvas.addEventListener('mousedown', (e) => {
             isPaint = true;
-            await ctx.beginPath()
+            ctx.beginPath()
             startX = e.clientX
             startY = e.clientY
+            ctx.moveTo(startX - canvasOffsetX, startY - canvasOffsetY)
         })
 
-        const coordinateArr = []
+        var coordinateArr = []
 
-        canvas.addEventListener('mouseup', async (e) => {
+        canvas.addEventListener('mouseup', (e) => {
             isPaint = false;
-
-
-
-            // await ctx.closePath();
+            ctx.closePath();
             if (path !== '') {
                 let currentData = {
                     'coordinates': coordinateArr.toString(),
@@ -364,13 +362,13 @@
                     'user_id': '{{ user.id }}',
                     'board_id': path,
                 }
-                await socket.send(JSON.stringify(currentData))
+                socket.send(JSON.stringify(currentData))
                 newBaordData.push(JSON.stringify(currentData))
             }
-
+            coordinateArr = []
         })
 
-        canvas.addEventListener('mousemove', async (e) => {
+        canvas.addEventListener('mousemove', (e) => {
             if (!isPaint) {
                 return;
             }
@@ -378,46 +376,29 @@
             ctx.lineCap = 'round';
             let x = e.clientX - canvasOffsetX
             let y = e.clientY - canvasOffsetY
-            await ctx.lineTo(x, y)
-            await ctx.stroke();
+            ctx.lineTo(x, y)
+            ctx.stroke();
             coordinateArr.push(`${x}-${y}`)
-            // if (path !== '') {
-            //     await socket.send(JSON.stringify({
-            //         'coordinates': `${x}-${y}`,
-            //         'lineWidth': lineWidth,
-            //         'color': ctx.strokeStyle,
-            //         'user': loggedUser
-            //     }))
-            // }
         })
 
         if (path !== '') {
-            socket.onmessage = async (e) => {
+            socket.onmessage = (e) => {
                 const data = JSON.parse(e.data)
                 if (loggedUser === data.user) {
                     return;
                 }
                 coordinates = data.coordinates.split(',')
+                ctx.beginPath();
                 for (let co of coordinates) {
                     let pos = co.split('-')
-                    setTimeout(async () => {
-                        ctx.beginPath();
-                        ctx.lineWidth = data.lineWidth;
-                        ctx.lineCap = 'round';
-                        ctx.strokeStyle = data.color
-                        ctx.lineTo(pos[0], pos[1])
-                        ctx.stroke();
-                    }, 500)
+                    ctx.lineWidth = data.lineWidth;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = data.color
+                    prev = pos
+                    ctx.lineTo(pos[0], pos[1])
+                    ctx.stroke();
                 }
-                // let pos = data.coordinates.split('-')
-                // await ctx.beginPath();
-                // setTimeout(async () => {
-                //     ctx.lineWidth = data.lineWidth;
-                //     ctx.lineCap = 'round';
-                //     ctx.strokeStyle = data.color
-                //     await ctx.lineTo(pos[0], pos[1])
-                //     await ctx.stroke();
-                // }, 1000)
+                ctx.closePath();
             }
         }
 
