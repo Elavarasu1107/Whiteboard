@@ -16,9 +16,15 @@ class UserRest(viewsets.ViewSet):
 
     @exception_handler
     def dispatch(self, request, *args, **kwargs):
+        """
+        calls the action based on the request method and handles exceptions of an api
+        """
         return super().dispatch(request, *args, **kwargs)
 
     def create(self, request):
+        """
+        Creates user in the db
+        """
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -26,6 +32,9 @@ class UserRest(viewsets.ViewSet):
                         status=status.HTTP_201_CREATED)
 
     def list(self, request):
+        """
+        Retrieves all the user except the user of the board
+        """
         board = Board.objects.get(id=request.query_params.get('id'))
         users = User.objects.all().exclude(id=board.user.id)
         serializer = RegisterSerializer(users, many=True)
@@ -34,6 +43,9 @@ class UserRest(viewsets.ViewSet):
 
     @action(methods=['post'], detail=True)
     def sign_in(self, request):
+        """
+        authenticate user and create session and access token
+        """
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -45,6 +57,9 @@ class UserRest(viewsets.ViewSet):
 
     @action(methods=['get'], detail=True)
     def sign_out(self, request):
+        """
+        Removes the user from the session
+        """
         logout(request)
         return Response({'message': 'Logged out successfully', 'status': 200, 'data': {}},
                         status=status.HTTP_200_OK)

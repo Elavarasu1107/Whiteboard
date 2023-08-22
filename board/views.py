@@ -20,14 +20,23 @@ class BoardRest(ModelViewSet):
     queryset = Board.objects.all()
 
     def get_queryset(self):
+        """
+        Returns queryset of own boards and collaborated boards of an user
+        """
         qs = super().get_queryset()
         return qs.filter(Q(user_id=self.request.user.id) | Q(collaborators__id=self.request.user.id))
 
     @exception_handler
     def dispatch(self, request, *args, **kwargs):
+        """
+        calls the action based on the request method and handles exceptions of an api
+        """
         return super().dispatch(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
+        """
+        creates the board in db
+        """
         request.data['user'] = request.user.id
         serializer = BoardSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -35,10 +44,16 @@ class BoardRest(ModelViewSet):
         return Response({'message': 'Board Created', 'status': 201, 'data': {}})
 
     def list(self, request, *args, **kwargs):
+        """
+        list all boards and collaborated boards of a particular user
+        """
         response = super().list(request, *args, **kwargs)
         return Response({'message': 'All boards Retrieved', 'status': 200, 'data': response.data})
 
     def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieves specific board and all details of its child model
+        """
         response = super().retrieve(request, *args, **kwargs)
         board_details = BoardDetails.objects.filter(board_id=response.data['id'],
                                                     user_id=response.data['user'],
@@ -46,6 +61,9 @@ class BoardRest(ModelViewSet):
         return Response({'message': 'Board Retrieved', 'status': 200, 'data': [response.data, board_details]})
 
     def update(self, request, *args, **kwargs):
+        """
+        Performs undo operation on the board by altering current_pointer column in the board details model
+        """
         board = Board.objects.filter(id=kwargs.get('pk')).first()
         if not board:
             raise ApiException(message='Board not found', status=404)
@@ -70,9 +88,15 @@ class CollaboratorRest(ModelViewSet):
 
     @exception_handler
     def dispatch(self, request, *args, **kwargs):
+        """
+        calls the action based on the request method and handles exceptions of an api
+        """
         return super().dispatch(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
+        """
+        collaborate the board with available users in the user model
+        """
         board = Board.objects.filter(id=request.data.get('id'), user_id=request.user.id).first()
         if not board:
             raise ApiException(message='Board not found or access denied', status=406)
@@ -81,6 +105,9 @@ class CollaboratorRest(ModelViewSet):
         return Response({'message': 'success', 'status': 200}, status=200)
 
     def destroy(self, request, *args, **kwargs):
+        """
+        Removes the collaborated user from the board
+        """
         board = Board.objects.filter(id=request.data.get('id'), user_id=request.user.id).first()
         if not board:
             raise ApiException(message='Board not found or access denied', status=404)
@@ -92,6 +119,9 @@ class CollaboratorRest(ModelViewSet):
 class EditorView(View):
 
     def get(self, request, board_id):
+        """
+        Renders the canvas editor page with board object and list of collaborated users
+        """
         if request.user.is_authenticated:
             board = Board.objects.filter(id=board_id, user_id=request.user.id).first()
             collaborators = []

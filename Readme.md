@@ -4,7 +4,7 @@ python 3.10
 
 python -m venv <env_name>
 
-run `source <env_name>/Scripts/ctivate` in gitbash
+run `source <env_name>/Scripts/activate` in gitbash
 
 pip install -r requirements.txt
 
